@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CanvasPiece } from "@/lib/pieces";
 import { useDraggable } from "@/hooks/useDraggable";
+import { getHost, parseYouTube } from "@/lib/pieces";
 
 const TONE_FOR: Record<string, string> = {
   text: "var(--bg)",
@@ -15,6 +16,7 @@ export function PieceCard({
   index,
   onMove,
   onRemove,
+  onUpdate,
   containerRef,
   removing,
 }: {
@@ -22,10 +24,12 @@ export function PieceCard({
   index: number;
   onMove: (pid: string, x: number, y: number) => void;
   onRemove: (pid: string) => void;
+  onUpdate: (pid: string, patch: Partial<CanvasPiece>) => void;
   containerRef: React.RefObject<HTMLDivElement | null>;
   removing?: boolean;
 }) {
   const [dragging, setDragging] = useState(false);
+  const [editing, setEditing] = useState(false);
   const sizeRef = useRef<{ w: number; h: number }>({ w: 240, h: 100 });
 
   const ref = useDraggable({
@@ -51,12 +55,16 @@ export function PieceCard({
     sizeRef.current = { w: r.width, h: r.height };
   }, [ref, piece]);
 
-  const tilt = dragging ? "0deg" : index % 2 === 0 ? "-1.5deg" : "1.2deg";
+  const tilt = dragging || editing ? "0deg" : index % 2 === 0 ? "-1.5deg" : "1.2deg";
   const bg = piece.type === "tag" ? `var(--${(piece as any).color})` : TONE_FOR[piece.type];
 
   return (
     <div
       ref={ref}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        setEditing(true);
+      }}
       className={`absolute select-none cursor-grab active:cursor-grabbing group ${removing ? "animate-fade-out" : "animate-snap-in"}`}
       style={{
         left: piece.x,
@@ -69,6 +77,7 @@ export function PieceCard({
         boxShadow: dragging ? "10px 10px 0 var(--shadow)" : "6px 6px 0 var(--shadow)",
         transition: "box-shadow 0.15s",
         touchAction: "none",
+        zIndex: editing ? 10 : "auto",
       }}
       onMouseEnter={(e) => {
         if (!dragging) (e.currentTarget as HTMLDivElement).style.boxShadow = "10px 10px 0 var(--shadow)";
@@ -77,15 +86,31 @@ export function PieceCard({
         if (!dragging) (e.currentTarget as HTMLDivElement).style.boxShadow = "6px 6px 0 var(--shadow)";
       }}
     >
-      <button
-        data-no-drag
-        onClick={() => onRemove(piece.pid)}
-        className="pixel absolute -top-3 -right-3 text-[9px] border-2 border-ink bg-background px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-        aria-label="remove"
-      >
-        [×]
-      </button>
-      <PieceBody piece={piece} />
+      <div data-no-drag={editing ? "" : undefined}>
+        <div className="absolute -top-3 -right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" data-no-drag>
+          {!editing && (
+            <button
+              onClick={() => setEditing(true)}
+              className="pixel text-[9px] border-2 border-ink bg-background px-1.5 py-0.5"
+              aria-label="edit"
+            >
+              EDIT
+            </button>
+          )}
+          <button
+            onClick={() => onRemove(piece.pid)}
+            className="pixel text-[9px] border-2 border-ink bg-background px-1.5 py-0.5"
+            aria-label="remove"
+          >
+            [×]
+          </button>
+        </div>
+        {editing ? (
+          <PieceEdit piece={piece} onChange={(patch) => onUpdate(piece.pid, patch)} onDone={() => setEditing(false)} />
+        ) : (
+          <PieceBody piece={piece} />
+        )}
+      </div>
     </div>
   );
 }
@@ -126,6 +151,128 @@ function PieceBody({ piece }: { piece: CanvasPiece }) {
           <div className="text-[12px] truncate">{piece.title}</div>
           <div className="pixel text-[9px] opacity-70">{piece.host}</div>
         </div>
+      </div>
+    );
+  }
+  return null;
+}
+
+function PieceEdit({
+  piece,
+  onChange,
+  onDone,
+}: {
+  piece: CanvasPiece;
+  onChange: (patch: Partial<CanvasPiece>) => void;
+  onDone: () => void;
+}) {
+  const stop = (e: React.PointerEvent) => e.stopPropagation();
+  const wrap = "p-3 cursor-default";
+
+  if (piece.type === "text") {
+    return (
+      <div className={wrap} onPointerDown={stop} style={{ width: 240 }}>
+        <textarea
+          autoFocus
+          value={piece.body}
+          onChange={(e) => onChange({ body: e.target.value } as any)}
+          onBlur={onDone}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" || (e.key === "Enter" && (e.metaKey || e.ctrlKey))) onDone();
+          }}
+          rows={4}
+          className="w-full border-2 border-ink bg-background p-2 text-[13px]"
+        />
+        <div className="pixel text-[8px] mt-1 opacity-60">esc / ⌘↵ to close</div>
+      </div>
+    );
+  }
+  if (piece.type === "tag") {
+    return (
+      <div className={wrap} onPointerDown={stop}>
+        <input
+          autoFocus
+          value={piece.label}
+          onChange={(e) => onChange({ label: e.target.value.toUpperCase() } as any)}
+          onBlur={onDone}
+          onKeyDown={(e) => e.key === "Enter" && onDone()}
+          className="pixel text-[10px] border-2 border-ink bg-background px-2 py-1 w-32"
+        />
+        <div className="flex gap-1 mt-2">
+          {(["exp", "thought", "bug", "win", "idea"] as const).map((c) => (
+            <button
+              key={c}
+              onClick={() => onChange({ color: c } as any)}
+              className="border-2 border-ink w-5 h-5"
+              style={{ background: `var(--${c})`, outline: piece.color === c ? "2px solid var(--ink)" : "none", outlineOffset: 2 }}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (piece.type === "image") {
+    return (
+      <div className={wrap} onPointerDown={stop} style={{ width: 240 }}>
+        <img src={piece.src} alt="" className="block max-h-32 mb-2 border-2 border-ink" />
+        <input
+          autoFocus
+          value={piece.caption || ""}
+          onChange={(e) => onChange({ caption: e.target.value } as any)}
+          onBlur={onDone}
+          onKeyDown={(e) => e.key === "Enter" && onDone()}
+          placeholder="caption"
+          className="w-full border-2 border-ink bg-background px-2 py-1 text-[12px]"
+        />
+      </div>
+    );
+  }
+  if (piece.type === "link") {
+    return (
+      <div className={wrap} onPointerDown={stop} style={{ width: 240 }}>
+        <input
+          autoFocus
+          value={piece.url}
+          onChange={(e) => {
+            const url = e.target.value;
+            onChange({ url, host: getHost(url) } as any);
+          }}
+          placeholder="url"
+          className="w-full border-2 border-ink bg-background px-2 py-1 text-[12px] mb-2"
+        />
+        <input
+          value={piece.title}
+          onChange={(e) => onChange({ title: e.target.value } as any)}
+          onBlur={onDone}
+          onKeyDown={(e) => e.key === "Enter" && onDone()}
+          placeholder="title"
+          className="w-full border-2 border-ink bg-background px-2 py-1 text-[13px]"
+        />
+      </div>
+    );
+  }
+  if (piece.type === "video") {
+    return (
+      <div className={wrap} onPointerDown={stop} style={{ width: 240 }}>
+        <input
+          autoFocus
+          value={piece.url}
+          onChange={(e) => {
+            const url = e.target.value;
+            const yt = parseYouTube(url) || piece.ytId;
+            onChange({ url, host: getHost(url), ytId: yt } as any);
+          }}
+          placeholder="youtube url"
+          className="w-full border-2 border-ink bg-background px-2 py-1 text-[12px] mb-2"
+        />
+        <input
+          value={piece.title}
+          onChange={(e) => onChange({ title: e.target.value } as any)}
+          onBlur={onDone}
+          onKeyDown={(e) => e.key === "Enter" && onDone()}
+          placeholder="title"
+          className="w-full border-2 border-ink bg-background px-2 py-1 text-[13px]"
+        />
       </div>
     );
   }
