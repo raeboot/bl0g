@@ -8,16 +8,20 @@ export function DayGroup({
   todayKey,
   entries,
   linkable = true,
+  canEdit = false,
+  onUpdate,
+  onDelete,
 }: {
   dayKey: string;
   todayKey: string;
   entries: Entry[];
   linkable?: boolean;
+  canEdit?: boolean;
+  onUpdate?: (e: Entry) => Promise<void> | void;
+  onDelete?: (id: number) => Promise<void> | void;
 }) {
   const label = dayLabel(dayKey, todayKey);
-  const heading = (
-    <h2 className="pixel text-[14px]">{label}</h2>
-  );
+  const heading = <h2 className="pixel text-[14px]">{label}</h2>;
   return (
     <section className="mb-12">
       <div className="flex items-baseline justify-between gap-3 mb-4">
@@ -35,7 +39,7 @@ export function DayGroup({
       <div className="border-t-2 border-ink mb-5" />
       <div className="space-y-5">
         {entries.map((e) => (
-          <EntryCard key={e.id} entry={e} />
+          <EntryCard key={e.id} entry={e} canEdit={canEdit} onUpdate={onUpdate} onDelete={onDelete} />
         ))}
       </div>
     </section>
