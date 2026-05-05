@@ -12,7 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as DayDateRouteImport } from './routes/day.$date'
+import { Route as AppSetupRouteImport } from './routes/app.setup'
+import { Route as AppLoginRouteImport } from './routes/app.login'
 
 const AppRoute = AppRouteImport.update({
   id: '/app',
@@ -29,43 +32,81 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
 const DayDateRoute = DayDateRouteImport.update({
   id: '/day/$date',
   path: '/day/$date',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppSetupRoute = AppSetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLoginRoute = AppLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/app': typeof AppRoute
+  '/app': typeof AppRouteWithChildren
+  '/app/login': typeof AppLoginRoute
+  '/app/setup': typeof AppSetupRoute
   '/day/$date': typeof DayDateRoute
+  '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/app': typeof AppRoute
+  '/app/login': typeof AppLoginRoute
+  '/app/setup': typeof AppSetupRoute
   '/day/$date': typeof DayDateRoute
+  '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/app': typeof AppRoute
+  '/app': typeof AppRouteWithChildren
+  '/app/login': typeof AppLoginRoute
+  '/app/setup': typeof AppSetupRoute
   '/day/$date': typeof DayDateRoute
+  '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/app' | '/day/$date'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/app'
+    | '/app/login'
+    | '/app/setup'
+    | '/day/$date'
+    | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/app' | '/day/$date'
-  id: '__root__' | '/' | '/about' | '/app' | '/day/$date'
+  to: '/' | '/about' | '/app/login' | '/app/setup' | '/day/$date' | '/app'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/app'
+    | '/app/login'
+    | '/app/setup'
+    | '/day/$date'
+    | '/app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
-  AppRoute: typeof AppRoute
+  AppRoute: typeof AppRouteWithChildren
   DayDateRoute: typeof DayDateRoute
 }
 
@@ -92,6 +133,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/day/$date': {
       id: '/day/$date'
       path: '/day/$date'
@@ -99,13 +147,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DayDateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/setup': {
+      id: '/app/setup'
+      path: '/setup'
+      fullPath: '/app/setup'
+      preLoaderRoute: typeof AppSetupRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/login': {
+      id: '/app/login'
+      path: '/login'
+      fullPath: '/app/login'
+      preLoaderRoute: typeof AppLoginRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
+
+interface AppRouteChildren {
+  AppLoginRoute: typeof AppLoginRoute
+  AppSetupRoute: typeof AppSetupRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppLoginRoute: AppLoginRoute,
+  AppSetupRoute: AppSetupRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
-  AppRoute: AppRoute,
+  AppRoute: AppRouteWithChildren,
   DayDateRoute: DayDateRoute,
 }
 export const routeTree = rootRouteImport
