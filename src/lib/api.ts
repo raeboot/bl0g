@@ -111,6 +111,23 @@ export async function apiDeleteEntry(id: number, token: string): Promise<void> {
   });
 }
 
+export async function apiUpdateEntry(entry: Entry, token: string): Promise<Entry> {
+  const m = await detectMode();
+  if (m === "local") {
+    const list: Entry[] = JSON.parse(localStorage.getItem("bl0g:entries") || "[]");
+    const next = list.map((e) => (e.id === entry.id ? entry : e));
+    localStorage.setItem("bl0g:entries", JSON.stringify(next));
+    return entry;
+  }
+  const r = await fetch(`/api/entries/${entry.id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(entry),
+  });
+  if (!r.ok) throw new Error("update failed");
+  return (await r.json()).entry;
+}
+
 export function seedLocalIfEmpty(seed: Entry[]) {
   const cur = localStorage.getItem("bl0g:entries");
   if (!cur || cur === "[]") {

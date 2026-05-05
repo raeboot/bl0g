@@ -71,6 +71,18 @@ app.delete("/api/entries/:id", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+app.put("/api/entries/:id", requireAuth, async (req, res) => {
+  const s = await readStore();
+  const id = Number(req.params.id);
+  const incoming = req.body;
+  if (!incoming || !Array.isArray(incoming.parts)) return res.status(400).json({ error: "bad entry" });
+  const idx = (s.entries || []).findIndex((e) => e.id === id);
+  if (idx < 0) return res.status(404).json({ error: "not found" });
+  s.entries[idx] = { ...s.entries[idx], parts: incoming.parts, ts: incoming.ts ?? s.entries[idx].ts };
+  await writeStore(s);
+  res.json({ entry: s.entries[idx] });
+});
+
 app.get("/api/export", requireAuth, async (req, res) => {
   const s = await readStore();
   const md = entriesToMarkdown(s.entries || []);
