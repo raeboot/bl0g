@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { DayGroup } from "@/components/feed/DayGroup";
-import { apiGetEntries } from "@/lib/api";
+import { apiGetEntries, apiUpdateEntry, apiDeleteEntry } from "@/lib/api";
+import { getToken } from "@/lib/auth";
 import { dayKey, type Entry } from "@/lib/pieces";
 
 export const Route = createFileRoute("/day/$date")({
@@ -12,12 +13,25 @@ export const Route = createFileRoute("/day/$date")({
 function DayPage() {
   const { date } = Route.useParams();
   const [entries, setEntries] = useState<Entry[] | null>(null);
+  const [canEdit, setCanEdit] = useState(false);
 
   useEffect(() => {
+    setCanEdit(!!getToken());
     apiGetEntries().then((list) => {
       setEntries(list.filter((e) => dayKey(e.ts) === date).sort((a, b) => b.ts - a.ts));
     });
   }, [date]);
+
+  const onUpdate = async (e: Entry) => {
+    const tok = getToken() || "";
+    const updated = await apiUpdateEntry(e, tok);
+    setEntries((cur) => (cur || []).map((x) => (x.id === updated.id ? updated : x)));
+  };
+  const onDelete = async (id: number) => {
+    const tok = getToken() || "";
+    await apiDeleteEntry(id, tok);
+    setEntries((cur) => (cur || []).filter((x) => x.id !== id));
+  };
 
   return (
     <div>
@@ -30,7 +44,15 @@ function DayPage() {
           <div className="pixel text-[10px] opacity-60">no moments on this day</div>
         )}
         {entries && entries.length > 0 && (
-          <DayGroup dayKey={date} todayKey={dayKey(Date.now())} entries={entries} linkable={false} />
+          <DayGroup
+            dayKey={date}
+            todayKey={dayKey(Date.now())}
+            entries={entries}
+            linkable={false}
+            canEdit={canEdit}
+            onUpdate={onUpdate}
+            onDelete={onDelete}
+          />
         )}
       </main>
     </div>
