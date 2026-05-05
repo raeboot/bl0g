@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { DayGroup } from "@/components/feed/DayGroup";
-import { apiGetEntries, seedLocalIfEmpty, getMode } from "@/lib/api";
+import { apiGetEntries, seedLocalIfEmpty, getMode, apiUpdateEntry, apiDeleteEntry } from "@/lib/api";
+import { getToken } from "@/lib/auth";
 import { dayKey, seedEntries, type Entry } from "@/lib/pieces";
 
 export const Route = createFileRoute("/")({
@@ -20,8 +21,10 @@ export const Route = createFileRoute("/")({
 function Feed() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [canEdit, setCanEdit] = useState(false);
 
   useEffect(() => {
+    setCanEdit(!!getToken());
     (async () => {
       const m = await getMode();
       if (m === "local") seedLocalIfEmpty(seedEntries());
@@ -32,6 +35,17 @@ function Feed() {
       setLoaded(true);
     })();
   }, []);
+
+  const onUpdate = async (e: Entry) => {
+    const tok = getToken() || "";
+    const updated = await apiUpdateEntry(e, tok);
+    setEntries((cur) => cur.map((x) => (x.id === updated.id ? updated : x)));
+  };
+  const onDelete = async (id: number) => {
+    const tok = getToken() || "";
+    await apiDeleteEntry(id, tok);
+    setEntries((cur) => cur.filter((x) => x.id !== id));
+  };
 
   const groups = new Map<string, Entry[]>();
   for (const e of entries) {
@@ -53,7 +67,15 @@ function Feed() {
           <div className="pixel text-[11px] opacity-60">no moments yet — head to /app to log your first one →</div>
         )}
         {keys.map((k) => (
-          <DayGroup key={k} dayKey={k} todayKey={today} entries={groups.get(k)!} />
+          <DayGroup
+            key={k}
+            dayKey={k}
+            todayKey={today}
+            entries={groups.get(k)!}
+            canEdit={canEdit}
+            onUpdate={onUpdate}
+            onDelete={onDelete}
+          />
         ))}
       </main>
     </div>
