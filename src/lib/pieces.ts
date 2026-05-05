@@ -9,12 +9,14 @@ export type Part = TextPart | TagPart | ImagePart | LinkPart | VideoPart;
 
 export type Entry = { id: number; ts: number; parts: Part[] };
 
-export type CanvasPiece = Part & {
-  pid: string;
-  x: number;
-  y: number;
-  w?: number;
-};
+type WithCanvas<T> = T & { pid: string; x: number; y: number; w?: number };
+export type CanvasPiece =
+  | WithCanvas<TextPart>
+  | WithCanvas<TagPart>
+  | WithCanvas<ImagePart>
+  | WithCanvas<LinkPart>
+  | WithCanvas<VideoPart>;
+export type NewPiece = Part;
 
 export const TAG_PRESETS: { label: string; color: TagColor }[] = [
   { label: "SHIPPED", color: "win" },

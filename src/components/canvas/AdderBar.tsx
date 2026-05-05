@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
-import { TAG_PRESETS, parseYouTube, getHost, type CanvasPiece } from "@/lib/pieces";
+import { TAG_PRESETS, parseYouTube, getHost, type NewPiece } from "@/lib/pieces";
 
 type Mode = "TEXT" | "TAG" | "LINK" | "IMAGE";
 
-export function AdderBar({ onAdd }: { onAdd: (p: Omit<CanvasPiece, "pid" | "x" | "y">) => void }) {
+export function AdderBar({ onAdd }: { onAdd: (p: NewPiece) => void }) {
   const [mode, setMode] = useState<Mode>("TEXT");
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");

@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { PieceCard } from "./PieceCard";
 import { AdderBar } from "./AdderBar";
-import type { CanvasPiece } from "@/lib/pieces";
+import type { CanvasPiece, NewPiece } from "@/lib/pieces";
 
 let pidCounter = 0;
 const nextPid = () => `p${Date.now()}-${pidCounter++}`;
@@ -22,7 +22,7 @@ export function Canvas({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const addPiece = useCallback(
-    (p: Omit<CanvasPiece, "pid" | "x" | "y">) => {
+    (p: NewPiece) => {
       const c = containerRef.current;
       const w = c?.clientWidth || 600;
       const h = c?.clientHeight || 400;
@@ -30,7 +30,7 @@ export function Canvas({
       const cardH = 120;
       const x = Math.max(10, Math.floor(Math.random() * Math.max(10, w - cardW - 20)));
       const y = Math.max(10, Math.floor(Math.random() * Math.max(10, h - cardH - 20)));
-      setPieces((arr) => [...arr, { ...p, pid: nextPid(), x, y }]);
+      setPieces((arr) => [...arr, { ...p, pid: nextPid(), x, y } as CanvasPiece]);
     },
     [setPieces],
   );
