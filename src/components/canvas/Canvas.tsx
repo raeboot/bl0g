@@ -38,6 +38,9 @@ export function Canvas({
   const onMove = (pid: string, x: number, y: number) =>
     setPieces((arr) => arr.map((p) => (p.pid === pid ? { ...p, x, y } : p)));
 
+  const onUpdate = (pid: string, patch: Partial<CanvasPiece>) =>
+    setPieces((arr) => arr.map((p) => (p.pid === pid ? ({ ...p, ...patch } as CanvasPiece) : p)));
+
   const onRemove = (pid: string) => {
     // mark as removing — parent handles full lifecycle via removingIds
     const event = new CustomEvent("bl0g:remove-piece", { detail: { pid } });
@@ -79,6 +82,7 @@ export function Canvas({
             index={i}
             onMove={onMove}
             onRemove={onRemove}
+            onUpdate={onUpdate}
             containerRef={containerRef}
             removing={removingIds.has(p.pid)}
           />

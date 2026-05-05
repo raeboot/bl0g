@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Canvas } from "@/components/canvas/Canvas";
 import { TimelinePanel } from "@/components/canvas/TimelinePanel";
-import { apiAddEntry, apiGetEntries, apiStatus, seedLocalIfEmpty, getMode } from "@/lib/api";
+import { apiAddEntry, apiGetEntries, apiStatus, seedLocalIfEmpty, getMode, apiUpdateEntry, apiDeleteEntry } from "@/lib/api";
 import { getToken, clearToken } from "@/lib/auth";
 import { seedEntries, type CanvasPiece, type Entry, type Part } from "@/lib/pieces";
 
@@ -70,6 +70,17 @@ function AppPage() {
     navigate({ to: "/app/login" });
   };
 
+  const onUpdateEntry = async (e: Entry) => {
+    const tok = getToken() || "";
+    const updated = await apiUpdateEntry(e, tok);
+    setEntries((cur) => cur.map((x) => (x.id === updated.id ? updated : x)));
+  };
+  const onDeleteEntry = async (id: number) => {
+    const tok = getToken() || "";
+    await apiDeleteEntry(id, tok);
+    setEntries((cur) => cur.filter((x) => x.id !== id));
+  };
+
   if (!authReady) {
     return (
       <div>
@@ -97,7 +108,7 @@ function AppPage() {
             onClear={() => setPieces([])}
             removingIds={removingIds}
           />
-          <TimelinePanel entries={entries} onExport={() => {}} />
+          <TimelinePanel entries={entries} onExport={() => {}} onUpdate={onUpdateEntry} onDelete={onDeleteEntry} />
         </div>
       </main>
     </div>
