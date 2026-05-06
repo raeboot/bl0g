@@ -9,6 +9,7 @@ const TONE_FOR: Record<string, string> = {
   image: "var(--bg)",
   link: "var(--exp)",
   video: "var(--bg)",
+  audio: "var(--win)",
 };
 
 export function PieceCard({
@@ -117,6 +118,15 @@ export function PieceCard({
 
 function PieceBody({ piece }: { piece: CanvasPiece }) {
   if (piece.type === "text") {
+    if (piece.html && piece.html.trim()) {
+      return (
+        <div
+          className="rt-content p-4 text-[13px] leading-relaxed"
+          style={{ minWidth: 140, maxWidth: 240 }}
+          dangerouslySetInnerHTML={{ __html: piece.html }}
+        />
+      );
+    }
     return <div className="p-4 text-[13px] leading-relaxed" style={{ minWidth: 140, maxWidth: 220 }}>{piece.body}</div>;
   }
   if (piece.type === "tag") {
@@ -132,9 +142,17 @@ function PieceBody({ piece }: { piece: CanvasPiece }) {
   }
   if (piece.type === "link") {
     return (
-      <div className="p-3" style={{ width: 240 }}>
-        <div className="text-[13px] font-semibold truncate">{piece.title}</div>
-        <div className="pixel text-[9px] mt-1 opacity-70">{piece.host}</div>
+      <div style={{ width: 240 }}>
+        {piece.image && (
+          <img src={piece.image} alt="" className="block w-full max-h-28 object-cover border-b-2 border-ink" />
+        )}
+        <div className="p-3">
+          <div className="text-[13px] font-semibold line-clamp-2">{piece.title}</div>
+          {piece.description && (
+            <div className="text-[11px] mt-1 opacity-80 line-clamp-2">{piece.description}</div>
+          )}
+          <div className="pixel text-[9px] mt-1 opacity-70">{piece.host}</div>
+        </div>
       </div>
     );
   }
@@ -142,7 +160,7 @@ function PieceBody({ piece }: { piece: CanvasPiece }) {
     return (
       <div style={{ width: 240 }}>
         <div className="relative">
-          <img src={`https://img.youtube.com/vi/${piece.ytId}/hqdefault.jpg`} alt="" className="block w-full" />
+          <img src={piece.image || `https://img.youtube.com/vi/${piece.ytId}/hqdefault.jpg`} alt="" className="block w-full" />
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="pixel text-[16px] border-2 border-ink bg-background px-2 py-1">▶</div>
           </div>
@@ -151,6 +169,17 @@ function PieceBody({ piece }: { piece: CanvasPiece }) {
           <div className="text-[12px] truncate">{piece.title}</div>
           <div className="pixel text-[9px] opacity-70">{piece.host}</div>
         </div>
+      </div>
+    );
+  }
+  if (piece.type === "audio") {
+    return (
+      <div className="p-2" style={{ width: 240 }} data-no-drag>
+        <div className="pixel text-[9px] mb-1 flex justify-between">
+          <span className="truncate">🎙 {piece.name || "voicenote"}</span>
+          {piece.duration ? <span>{piece.duration.toFixed(1)}s</span> : null}
+        </div>
+        <audio src={piece.src} controls className="w-full" />
       </div>
     );
   }
