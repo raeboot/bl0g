@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { CanvasPiece } from "@/lib/pieces";
 import { useDraggable } from "@/hooks/useDraggable";
 import { getHost, parseYouTube } from "@/lib/pieces";
+import { RichTextEditor } from "@/components/RichTextEditor";
 
 const TONE_FOR: Record<string, string> = {
   text: "var(--bg)",
@@ -200,19 +201,17 @@ function PieceEdit({
 
   if (piece.type === "text") {
     return (
-      <div className={wrap} onPointerDown={stop} style={{ width: 240 }}>
-        <textarea
+      <div className={wrap} onPointerDown={stop} style={{ width: 280 }}>
+        <RichTextEditor
+          html={piece.html || piece.body || ""}
+          onChange={(html, text) => onChange({ body: text, html } as any)}
+          placeholder="text…"
+          minHeight={80}
           autoFocus
-          value={piece.body}
-          onChange={(e) => onChange({ body: e.target.value } as any)}
-          onBlur={onDone}
-          onKeyDown={(e) => {
-            if (e.key === "Escape" || (e.key === "Enter" && (e.metaKey || e.ctrlKey))) onDone();
-          }}
-          rows={4}
-          className="w-full border-2 border-ink bg-background p-2 text-[13px]"
         />
-        <div className="pixel text-[8px] mt-1 opacity-60">esc / ⌘↵ to close</div>
+        <div className="flex justify-end mt-2">
+          <button className="ink-btn" onClick={onDone}>DONE</button>
+        </div>
       </div>
     );
   }
