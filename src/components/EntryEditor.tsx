@@ -214,11 +214,11 @@ function rowBg(p: Part): string {
 function PartFields({ part, onChange }: { part: Part; onChange: (p: Part) => void }) {
   if (part.type === "text") {
     return (
-      <textarea
-        value={part.body}
-        onChange={(e) => onChange({ ...part, body: e.target.value })}
-        rows={3}
-        className="w-full border-2 border-ink bg-background px-2 py-1 text-[13px]"
+      <RichTextEditor
+        html={part.html || part.body || ""}
+        onChange={(html, text) => onChange({ ...part, body: text, html })}
+        placeholder="text…"
+        minHeight={80}
       />
     );
   }
@@ -257,9 +257,23 @@ function PartFields({ part, onChange }: { part: Part; onChange: (p: Part) => voi
       </div>
     );
   }
+  if (part.type === "audio") {
+    return (
+      <div className="space-y-2">
+        <audio src={part.src} controls className="w-full" />
+        <input
+          value={part.name || ""}
+          onChange={(e) => onChange({ ...part, name: e.target.value })}
+          placeholder="name"
+          className="w-full border-2 border-ink bg-background px-2 py-1 text-[12px]"
+        />
+      </div>
+    );
+  }
   if (part.type === "link") {
     return (
       <div className="space-y-2">
+        {part.image && <img src={part.image} alt="" className="max-h-28 w-full object-cover border-2 border-ink" />}
         <input
           value={part.url}
           onChange={(e) => {
@@ -274,6 +288,12 @@ function PartFields({ part, onChange }: { part: Part; onChange: (p: Part) => voi
           onChange={(e) => onChange({ ...part, title: e.target.value })}
           placeholder="title"
           className="w-full border-2 border-ink bg-background px-2 py-1 text-[13px]"
+        />
+        <input
+          value={part.description || ""}
+          onChange={(e) => onChange({ ...part, description: e.target.value })}
+          placeholder="description"
+          className="w-full border-2 border-ink bg-background px-2 py-1 text-[12px]"
         />
       </div>
     );
