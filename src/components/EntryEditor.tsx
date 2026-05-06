@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { Entry, Part, TagColor } from "@/lib/pieces";
 import { TAG_PRESETS, parseYouTube, getHost } from "@/lib/pieces";
+import { RichTextEditor } from "@/components/RichTextEditor";
+import { AudioRecorder } from "@/components/AudioRecorder";
+import { fetchLinkMeta } from "@/lib/preview";
 
 const TAG_COLORS: TagColor[] = ["exp", "thought", "bug", "win", "idea"];
 
@@ -38,19 +41,32 @@ export function EntryEditor({
   const addText = () => setParts((a) => [...a, { type: "text", body: "" }]);
   const addTag = (label: string, color: TagColor) =>
     setParts((a) => [...a, { type: "tag", label, color }]);
-  const addLink = () => {
+  const addLink = async () => {
     if (!linkInput.trim()) return;
-    const yt = parseYouTube(linkInput);
-    const host = getHost(linkInput);
-    if (yt) setParts((a) => [...a, { type: "video", url: linkInput, title: host, host, ytId: yt }]);
-    else setParts((a) => [...a, { type: "link", url: linkInput, title: host, host }]);
+    const u = linkInput;
+    const yt = parseYouTube(u);
+    const host = getHost(u);
     setLinkInput("");
+    const meta = await fetchLinkMeta(u);
+    if (yt) {
+      setParts((a) => [
+        ...a,
+        { type: "video", url: u, title: meta.title || host, host, ytId: yt, description: meta.description, image: meta.image },
+      ]);
+    } else {
+      setParts((a) => [
+        ...a,
+        { type: "link", url: u, title: meta.title || host, host, description: meta.description, image: meta.image },
+      ]);
+    }
   };
   const addImage = (f: File) => {
     const reader = new FileReader();
     reader.onload = () => setParts((a) => [...a, { type: "image", src: String(reader.result), caption: f.name }]);
     reader.readAsDataURL(f);
   };
+  const addAudio = (src: string, name: string, duration: number) =>
+    setParts((a) => [...a, { type: "audio", src, name, duration }]);
 
   const submit = async () => {
     setErr("");
@@ -91,6 +107,7 @@ export function EntryEditor({
         <div className="flex flex-wrap gap-2">
           <button className="ink-btn" onClick={addText}>+ TEXT</button>
           <button className="ink-btn" onClick={() => fileRef.current?.click()}>+ IMAGE</button>
+          <AudioRecorder onCapture={addAudio} />
           <input
             ref={fileRef}
             type="file"

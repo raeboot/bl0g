@@ -100,6 +100,7 @@ export function entriesToMarkdown(entries: Entry[]): string {
       else if (p.type === "image") lines.push(`![${p.caption || ""}](${p.src})\n`);
       else if (p.type === "link") lines.push(`[${p.title || p.url}](${p.url})\n`);
       else if (p.type === "video") lines.push(`[▶ ${p.title || p.url}](${p.url})\n`);
+      else if (p.type === "audio") lines.push(`🎙 ${p.name || "voicenote"}\n`);
     }
   }
   return lines.join("\n");
