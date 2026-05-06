@@ -51,6 +51,40 @@ app.get("/api/entries", async (req, res) => {
   res.json({ entries: s.entries || [] });
 });
 
+app.get("/api/preview", async (req, res) => {
+  const url = String(req.query.url || "");
+  if (!/^https?:\/\//i.test(url)) return res.status(400).json({ error: "bad url" });
+  try {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 6000);
+    const r = await fetch(url, {
+      signal: ac.signal,
+      headers: { "user-agent": "Mozilla/5.0 bl0g-preview" },
+      redirect: "follow",
+    });
+    clearTimeout(t);
+    const html = (await r.text()).slice(0, 200_000);
+    const pick = (re) => {
+      const m = html.match(re);
+      return m ? m[1].trim() : undefined;
+    };
+    const meta = (prop) =>
+      pick(new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]+content=["']([^"']+)["']`, "i")) ||
+      pick(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${prop}["']`, "i"));
+    let image = meta("og:image") || meta("twitter:image");
+    if (image && image.startsWith("/")) {
+      try { image = new URL(image, url).toString(); } catch {}
+    }
+    res.json({
+      title: meta("og:title") || pick(/<title[^>]*>([^<]+)<\/title>/i),
+      description: meta("og:description") || meta("description"),
+      image,
+    });
+  } catch (e) {
+    res.status(500).json({ error: "preview failed" });
+  }
+});
+
 app.post("/api/entries", requireAuth, async (req, res) => {
   const s = await readStore();
   const entry = req.body;

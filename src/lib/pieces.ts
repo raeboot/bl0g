@@ -1,11 +1,12 @@
 export type TagColor = "exp" | "thought" | "bug" | "win" | "idea";
 
-export type TextPart = { type: "text"; body: string };
+export type TextPart = { type: "text"; body: string; html?: string };
 export type TagPart = { type: "tag"; label: string; color: TagColor };
 export type ImagePart = { type: "image"; src: string; caption?: string };
-export type LinkPart = { type: "link"; url: string; title: string; host: string };
-export type VideoPart = { type: "video"; url: string; title: string; host: string; ytId: string };
-export type Part = TextPart | TagPart | ImagePart | LinkPart | VideoPart;
+export type LinkPart = { type: "link"; url: string; title: string; host: string; description?: string; image?: string };
+export type VideoPart = { type: "video"; url: string; title: string; host: string; ytId: string; description?: string; image?: string };
+export type AudioPart = { type: "audio"; src: string; name?: string; duration?: number };
+export type Part = TextPart | TagPart | ImagePart | LinkPart | VideoPart | AudioPart;
 
 export type Entry = { id: number; ts: number; parts: Part[] };
 
@@ -15,7 +16,8 @@ export type CanvasPiece =
   | WithCanvas<TagPart>
   | WithCanvas<ImagePart>
   | WithCanvas<LinkPart>
-  | WithCanvas<VideoPart>;
+  | WithCanvas<VideoPart>
+  | WithCanvas<AudioPart>;
 export type NewPiece = Part;
 
 export const TAG_PRESETS: { label: string; color: TagColor }[] = [
@@ -98,6 +100,7 @@ export function entriesToMarkdown(entries: Entry[]): string {
       else if (p.type === "image") lines.push(`![${p.caption || ""}](${p.src})\n`);
       else if (p.type === "link") lines.push(`[${p.title || p.url}](${p.url})\n`);
       else if (p.type === "video") lines.push(`[▶ ${p.title || p.url}](${p.url})\n`);
+      else if (p.type === "audio") lines.push(`🎙 ${p.name || "voicenote"}\n`);
     }
   }
   return lines.join("\n");

@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { Entry, Part, TagColor } from "@/lib/pieces";
 import { TAG_PRESETS, parseYouTube, getHost } from "@/lib/pieces";
+import { RichTextEditor } from "@/components/RichTextEditor";
+import { AudioRecorder } from "@/components/AudioRecorder";
+import { fetchLinkMeta } from "@/lib/preview";
 
 const TAG_COLORS: TagColor[] = ["exp", "thought", "bug", "win", "idea"];
 
@@ -38,19 +41,32 @@ export function EntryEditor({
   const addText = () => setParts((a) => [...a, { type: "text", body: "" }]);
   const addTag = (label: string, color: TagColor) =>
     setParts((a) => [...a, { type: "tag", label, color }]);
-  const addLink = () => {
+  const addLink = async () => {
     if (!linkInput.trim()) return;
-    const yt = parseYouTube(linkInput);
-    const host = getHost(linkInput);
-    if (yt) setParts((a) => [...a, { type: "video", url: linkInput, title: host, host, ytId: yt }]);
-    else setParts((a) => [...a, { type: "link", url: linkInput, title: host, host }]);
+    const u = linkInput;
+    const yt = parseYouTube(u);
+    const host = getHost(u);
     setLinkInput("");
+    const meta = await fetchLinkMeta(u);
+    if (yt) {
+      setParts((a) => [
+        ...a,
+        { type: "video", url: u, title: meta.title || host, host, ytId: yt, description: meta.description, image: meta.image },
+      ]);
+    } else {
+      setParts((a) => [
+        ...a,
+        { type: "link", url: u, title: meta.title || host, host, description: meta.description, image: meta.image },
+      ]);
+    }
   };
   const addImage = (f: File) => {
     const reader = new FileReader();
     reader.onload = () => setParts((a) => [...a, { type: "image", src: String(reader.result), caption: f.name }]);
     reader.readAsDataURL(f);
   };
+  const addAudio = (src: string, name: string, duration: number) =>
+    setParts((a) => [...a, { type: "audio", src, name, duration }]);
 
   const submit = async () => {
     setErr("");
@@ -91,6 +107,7 @@ export function EntryEditor({
         <div className="flex flex-wrap gap-2">
           <button className="ink-btn" onClick={addText}>+ TEXT</button>
           <button className="ink-btn" onClick={() => fileRef.current?.click()}>+ IMAGE</button>
+          <AudioRecorder onCapture={addAudio} />
           <input
             ref={fileRef}
             type="file"
@@ -197,11 +214,11 @@ function rowBg(p: Part): string {
 function PartFields({ part, onChange }: { part: Part; onChange: (p: Part) => void }) {
   if (part.type === "text") {
     return (
-      <textarea
-        value={part.body}
-        onChange={(e) => onChange({ ...part, body: e.target.value })}
-        rows={3}
-        className="w-full border-2 border-ink bg-background px-2 py-1 text-[13px]"
+      <RichTextEditor
+        html={part.html || part.body || ""}
+        onChange={(html, text) => onChange({ ...part, body: text, html })}
+        placeholder="text…"
+        minHeight={80}
       />
     );
   }
@@ -240,9 +257,23 @@ function PartFields({ part, onChange }: { part: Part; onChange: (p: Part) => voi
       </div>
     );
   }
+  if (part.type === "audio") {
+    return (
+      <div className="space-y-2">
+        <audio src={part.src} controls className="w-full" />
+        <input
+          value={part.name || ""}
+          onChange={(e) => onChange({ ...part, name: e.target.value })}
+          placeholder="name"
+          className="w-full border-2 border-ink bg-background px-2 py-1 text-[12px]"
+        />
+      </div>
+    );
+  }
   if (part.type === "link") {
     return (
       <div className="space-y-2">
+        {part.image && <img src={part.image} alt="" className="max-h-28 w-full object-cover border-2 border-ink" />}
         <input
           value={part.url}
           onChange={(e) => {
@@ -257,6 +288,12 @@ function PartFields({ part, onChange }: { part: Part; onChange: (p: Part) => voi
           onChange={(e) => onChange({ ...part, title: e.target.value })}
           placeholder="title"
           className="w-full border-2 border-ink bg-background px-2 py-1 text-[13px]"
+        />
+        <input
+          value={part.description || ""}
+          onChange={(e) => onChange({ ...part, description: e.target.value })}
+          placeholder="description"
+          className="w-full border-2 border-ink bg-background px-2 py-1 text-[12px]"
         />
       </div>
     );
