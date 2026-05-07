@@ -8,7 +8,7 @@ export type VideoPart = { type: "video"; url: string; title: string; host: strin
 export type AudioPart = { type: "audio"; src: string; name?: string; duration?: number };
 export type Part = TextPart | TagPart | ImagePart | LinkPart | VideoPart | AudioPart;
 
-export type Entry = { id: number; ts: number; parts: Part[] };
+export type Entry = { id: number; ts: number; parts: Part[]; mood?: MoodId };
 
 export type MoodId =
   | "grinning"
@@ -19,8 +19,6 @@ export type MoodId =
   | "shy"
   | "determined"
   | "overwhelmed";
-
-export type EntryWithMood = Entry & { mood?: MoodId };
 
 type WithCanvas<T> = T & { pid: string; x: number; y: number; w?: number };
 export type CanvasPiece =
