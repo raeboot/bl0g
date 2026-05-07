@@ -5,6 +5,8 @@ import { DayGroup } from "@/components/feed/DayGroup";
 import { apiGetEntries, seedLocalIfEmpty, getMode, apiUpdateEntry, apiDeleteEntry } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { dayKey, seedEntries, type Entry } from "@/lib/pieces";
+import { SayHiButton } from "@/components/SayHiButton";
+import { GuestbookFAB } from "@/components/GuestbookPad";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -60,8 +62,14 @@ function Feed() {
     <div>
       <SiteHeader active="feed" />
       <main className="mx-auto max-w-3xl px-5 py-10">
-        <h1 className="pixel text-[18px] mb-2">bl0g.dev</h1>
-        <p className="text-[13px] opacity-70 mb-10">small moments, logged as they happen</p>
+        <div className="flex items-start justify-between gap-3 mb-2 flex-wrap">
+          <div>
+            <h1 className="pixel text-[18px]">bl0g.dev</h1>
+            <p className="text-[13px] opacity-70">small moments, logged as they happen</p>
+          </div>
+          <SayHiButton />
+        </div>
+        <div className="mb-10" />
         {!loaded && <div className="pixel text-[10px] opacity-60">loading…</div>}
         {loaded && entries.length === 0 && (
           <div className="pixel text-[11px] opacity-60">no moments yet — head to /app to log your first one →</div>
@@ -78,6 +86,7 @@ function Feed() {
           />
         ))}
       </main>
+      <GuestbookFAB />
     </div>
   );
 }
