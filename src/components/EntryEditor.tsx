@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import type { Entry, Part, TagColor } from "@/lib/pieces";
+import type { Entry, MoodId, Part, TagColor } from "@/lib/pieces";
 import { TAG_PRESETS, parseYouTube, getHost } from "@/lib/pieces";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { AudioRecorder } from "@/components/AudioRecorder";
 import { fetchLinkMeta } from "@/lib/preview";
+import { MoodPicker } from "@/components/MoodFace";
 
 const TAG_COLORS: TagColor[] = ["exp", "thought", "bug", "win", "idea"];
 
@@ -19,6 +20,7 @@ export function EntryEditor({
   onDelete?: () => Promise<void> | void;
 }) {
   const [parts, setParts] = useState<Part[]>(entry.parts);
+  const [mood, setMood] = useState<MoodId | undefined>(entry.mood);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -74,7 +76,7 @@ export function EntryEditor({
     try {
       // strip empty text parts
       const clean = parts.filter((p) => !(p.type === "text" && !p.body.trim()));
-      await onSave({ ...entry, parts: clean });
+      await onSave({ ...entry, parts: clean, mood });
     } catch (e: any) {
       setErr(e.message || "save failed");
     } finally {
@@ -142,6 +144,11 @@ export function EntryEditor({
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="border-t-2 border-ink pt-3 space-y-2">
+        <div className="pixel text-[9px] opacity-60">MOOD</div>
+        <MoodPicker value={mood} onChange={setMood} />
       </div>
 
       {err && <div className="pixel text-[10px]" style={{ color: "var(--bug)" }}>{err}</div>}
