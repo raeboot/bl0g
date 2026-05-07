@@ -5,7 +5,9 @@ import { Canvas } from "@/components/canvas/Canvas";
 import { TimelinePanel } from "@/components/canvas/TimelinePanel";
 import { apiAddEntry, apiGetEntries, apiStatus, seedLocalIfEmpty, getMode, apiUpdateEntry, apiDeleteEntry } from "@/lib/api";
 import { getToken, clearToken } from "@/lib/auth";
-import { seedEntries, type CanvasPiece, type Entry, type Part } from "@/lib/pieces";
+import { seedEntries, type CanvasPiece, type Entry, type MoodId, type Part } from "@/lib/pieces";
+import { Postcards } from "@/components/Postcards";
+import { SayHiSettings } from "@/components/SayHiSettings";
 
 export const Route = createFileRoute("/app/")({
   component: AppPage,
@@ -17,6 +19,7 @@ function AppPage() {
   const [pieces, setPieces] = useState<CanvasPiece[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
+  const [mood, setMood] = useState<MoodId | undefined>(undefined);
 
   useEffect(() => {
     (async () => {
@@ -52,7 +55,7 @@ function AppPage() {
   const onCommit = async () => {
     if (pieces.length === 0) return;
     const parts: Part[] = pieces.map(({ pid, x, y, w, ...rest }) => rest as Part);
-    const entry: Entry = { id: Date.now(), ts: Date.now(), parts };
+    const entry: Entry = { id: Date.now(), ts: Date.now(), parts, mood };
     const tok = getToken() || "";
     try {
       await apiAddEntry(entry, tok);
@@ -62,6 +65,7 @@ function AppPage() {
     }
     // staggered fade-up animation: clear after delay
     setPieces([]);
+    setMood(undefined);
     setEntries((cur) => [entry, ...cur]);
   };
 
@@ -107,8 +111,15 @@ function AppPage() {
             onCommit={onCommit}
             onClear={() => setPieces([])}
             removingIds={removingIds}
+            mood={mood}
+            setMood={setMood}
           />
           <TimelinePanel entries={entries} onExport={() => {}} onUpdate={onUpdateEntry} onDelete={onDeleteEntry} />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-10">
+          <Postcards />
+          <SayHiSettings />
         </div>
       </main>
     </div>

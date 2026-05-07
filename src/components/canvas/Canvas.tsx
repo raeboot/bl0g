@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from "react";
 import { PieceCard } from "./PieceCard";
 import { AdderBar } from "./AdderBar";
-import type { CanvasPiece, NewPiece } from "@/lib/pieces";
+import type { CanvasPiece, MoodId, NewPiece } from "@/lib/pieces";
+import { MoodPicker, MoodFace } from "@/components/MoodFace";
 
 let pidCounter = 0;
 const nextPid = () => `p${Date.now()}-${pidCounter++}`;
@@ -12,12 +13,16 @@ export function Canvas({
   onCommit,
   onClear,
   removingIds,
+  mood,
+  setMood,
 }: {
   pieces: CanvasPiece[];
   setPieces: React.Dispatch<React.SetStateAction<CanvasPiece[]>>;
   onCommit: () => void;
   onClear: () => void;
   removingIds: Set<string>;
+  mood?: MoodId;
+  setMood: (m?: MoodId) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -93,6 +98,10 @@ export function Canvas({
         <span className="pixel text-[10px] opacity-60">
           {pieces.length} PIECE{pieces.length === 1 ? "" : "S"}
         </span>
+        <div className="flex items-center gap-2 pixel text-[9px] opacity-70">
+          {mood && <MoodFace mood={mood} size={20} />}
+          <span>{mood ? `mood: ${mood}` : "no mood"}</span>
+        </div>
         <div className="flex gap-2">
           <button className="ink-btn" onClick={onClear} disabled={pieces.length === 0}>
             [ CLEAR ]
@@ -104,6 +113,11 @@ export function Canvas({
       </div>
 
       <AdderBar onAdd={addPiece} />
+
+      <div className="border-2 border-ink bg-background p-4 shadow-sticky">
+        <div className="pixel text-[10px] opacity-60 mb-3">HOW DID THIS FEEL? (optional)</div>
+        <MoodPicker value={mood} onChange={setMood} />
+      </div>
     </div>
   );
 }

@@ -161,3 +161,9 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+@keyframes heart-float {
+  0% { opacity: 0; transform: translateY(0); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-40px); }
+}

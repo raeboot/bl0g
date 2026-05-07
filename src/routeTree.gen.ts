@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as GuestbookRouteImport } from './routes/guestbook'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
@@ -17,6 +18,11 @@ import { Route as DayDateRouteImport } from './routes/day.$date'
 import { Route as AppSetupRouteImport } from './routes/app.setup'
 import { Route as AppLoginRouteImport } from './routes/app.login'
 
+const GuestbookRoute = GuestbookRouteImport.update({
+  id: '/guestbook',
+  path: '/guestbook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
@@ -57,6 +63,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/app': typeof AppRouteWithChildren
+  '/guestbook': typeof GuestbookRoute
   '/app/login': typeof AppLoginRoute
   '/app/setup': typeof AppSetupRoute
   '/day/$date': typeof DayDateRoute
@@ -65,6 +72,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/guestbook': typeof GuestbookRoute
   '/app/login': typeof AppLoginRoute
   '/app/setup': typeof AppSetupRoute
   '/day/$date': typeof DayDateRoute
@@ -75,6 +83,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/app': typeof AppRouteWithChildren
+  '/guestbook': typeof GuestbookRoute
   '/app/login': typeof AppLoginRoute
   '/app/setup': typeof AppSetupRoute
   '/day/$date': typeof DayDateRoute
@@ -86,17 +95,26 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/app'
+    | '/guestbook'
     | '/app/login'
     | '/app/setup'
     | '/day/$date'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/app/login' | '/app/setup' | '/day/$date' | '/app'
+  to:
+    | '/'
+    | '/about'
+    | '/guestbook'
+    | '/app/login'
+    | '/app/setup'
+    | '/day/$date'
+    | '/app'
   id:
     | '__root__'
     | '/'
     | '/about'
     | '/app'
+    | '/guestbook'
     | '/app/login'
     | '/app/setup'
     | '/day/$date'
@@ -107,11 +125,19 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AppRoute: typeof AppRouteWithChildren
+  GuestbookRoute: typeof GuestbookRoute
   DayDateRoute: typeof DayDateRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/guestbook': {
+      id: '/guestbook'
+      path: '/guestbook'
+      fullPath: '/guestbook'
+      preLoaderRoute: typeof GuestbookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app': {
       id: '/app'
       path: '/app'
@@ -182,6 +208,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AppRoute: AppRouteWithChildren,
+  GuestbookRoute: GuestbookRoute,
   DayDateRoute: DayDateRoute,
 }
 export const routeTree = rootRouteImport

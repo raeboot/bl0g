@@ -112,9 +112,87 @@ app.put("/api/entries/:id", requireAuth, async (req, res) => {
   if (!incoming || !Array.isArray(incoming.parts)) return res.status(400).json({ error: "bad entry" });
   const idx = (s.entries || []).findIndex((e) => e.id === id);
   if (idx < 0) return res.status(404).json({ error: "not found" });
-  s.entries[idx] = { ...s.entries[idx], parts: incoming.parts, ts: incoming.ts ?? s.entries[idx].ts };
+  s.entries[idx] = {
+    ...s.entries[idx],
+    parts: incoming.parts,
+    ts: incoming.ts ?? s.entries[idx].ts,
+    mood: incoming.mood ?? s.entries[idx].mood,
+  };
   await writeStore(s);
   res.json({ entry: s.entries[idx] });
+});
+
+// ===== Reactions =====
+app.post("/api/entries/:id/react", async (req, res) => {
+  const s = await readStore();
+  const id = Number(req.params.id);
+  s.reactions = s.reactions || {};
+  s.reactions[id] = (s.reactions[id] || 0) + 1;
+  await writeStore(s);
+  res.json({ count: s.reactions[id] });
+});
+app.get("/api/reactions", async (req, res) => {
+  const s = await readStore();
+  res.json({ counts: s.reactions || {} });
+});
+
+// ===== Postcards (private) =====
+app.get("/api/postcards", requireAuth, async (req, res) => {
+  const s = await readStore();
+  res.json({ postcards: s.postcards || [] });
+});
+app.post("/api/postcards", requireAuth, async (req, res) => {
+  const s = await readStore();
+  const p = req.body;
+  if (!p || !p.body) return res.status(400).json({ error: "bad postcard" });
+  p.id = p.id || Date.now();
+  s.postcards = s.postcards || [];
+  s.postcards.unshift(p);
+  await writeStore(s);
+  res.json({ postcard: p });
+});
+app.post("/api/postcards/:id/read", requireAuth, async (req, res) => {
+  const s = await readStore();
+  const id = Number(req.params.id);
+  s.postcards = (s.postcards || []).map((p) => (p.id === id ? { ...p, read: true } : p));
+  await writeStore(s);
+  res.json({ ok: true });
+});
+app.delete("/api/postcards/:id", requireAuth, async (req, res) => {
+  const s = await readStore();
+  const id = Number(req.params.id);
+  s.postcards = (s.postcards || []).filter((p) => p.id !== id);
+  await writeStore(s);
+  res.json({ ok: true });
+});
+
+// ===== Guestbook =====
+app.get("/api/guestbook", async (req, res) => {
+  const s = await readStore();
+  res.json({ entries: s.guestbook || [] });
+});
+app.post("/api/guestbook", async (req, res) => {
+  const s = await readStore();
+  const e = req.body;
+  if (!e || (!e.body && !e.src)) return res.status(400).json({ error: "empty" });
+  e.id = e.id || Date.now();
+  e.ts = e.ts || Date.now();
+  s.guestbook = s.guestbook || [];
+  s.guestbook.unshift(e);
+  await writeStore(s);
+  res.json({ entry: e });
+});
+
+// ===== Say Hi =====
+app.get("/api/sayhi", async (req, res) => {
+  const s = await readStore();
+  res.json({ links: s.sayhi || [] });
+});
+app.put("/api/sayhi", requireAuth, async (req, res) => {
+  const s = await readStore();
+  s.sayhi = Array.isArray(req.body?.links) ? req.body.links : [];
+  await writeStore(s);
+  res.json({ ok: true });
 });
 
 app.get("/api/export", requireAuth, async (req, res) => {
