@@ -10,6 +10,18 @@ export type Part = TextPart | TagPart | ImagePart | LinkPart | VideoPart | Audio
 
 export type Entry = { id: number; ts: number; parts: Part[] };
 
+export type MoodId =
+  | "grinning"
+  | "sleepy"
+  | "chaotic"
+  | "melting"
+  | "sparkling"
+  | "shy"
+  | "determined"
+  | "overwhelmed";
+
+export type EntryWithMood = Entry & { mood?: MoodId };
+
 type WithCanvas<T> = T & { pid: string; x: number; y: number; w?: number };
 export type CanvasPiece =
   | WithCanvas<TextPart>
