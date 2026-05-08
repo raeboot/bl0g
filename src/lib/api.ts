@@ -1,136 +1,109 @@
-import type { Entry } from "./pieces";
+// Browser-side API surface — talks to Supabase directly.
+import { supabase } from "@/integrations/supabase/client";
+import { dayKey, type Entry, type Part } from "./pieces";
 
-let mode: "api" | "local" | null = null;
-
-async function detectMode(): Promise<"api" | "local"> {
-  if (mode) return mode;
-  try {
-    const r = await fetch("/api/status", { method: "GET" });
-    if (r.ok) {
-      const ct = r.headers.get("content-type") || "";
-      if (ct.includes("application/json")) {
-        await r.json();
-        mode = "api";
-        return mode;
-      }
-    }
-  } catch {}
-  mode = "local";
-  return mode;
+export async function getMode(): Promise<"api"> {
+  return "api";
 }
 
-export async function getMode() {
-  return detectMode();
+function rowToEntry(row: {
+  id: number | string;
+  ts: number | string;
+  parts: unknown;
+  tag_ids?: unknown;
+}): Entry {
+  return {
+    id: Number(row.id),
+    ts: Number(row.ts),
+    parts: (row.parts as Part[]) ?? [],
+    tagIds: Array.isArray(row.tag_ids) ? (row.tag_ids as string[]) : [],
+  };
 }
 
 export async function apiStatus(): Promise<{ initialized: boolean; hasEntries: boolean }> {
-  const m = await detectMode();
-  if (m === "local") {
-    const tok = localStorage.getItem("bl0g:localPwSet") === "1";
-    const entries = JSON.parse(localStorage.getItem("bl0g:entries") || "[]");
-    return { initialized: tok, hasEntries: entries.length > 0 };
-  }
-  const r = await fetch("/api/status");
-  return r.json();
+  const [cfgRes, countRes] = await Promise.all([
+    supabase.from("app_config").select("owner_uid").eq("id", 1).maybeSingle(),
+    supabase.from("entries").select("id", { count: "exact", head: true }),
+  ]);
+  return {
+    initialized: !!cfgRes.data?.owner_uid,
+    hasEntries: (countRes.count ?? 0) > 0,
+  };
 }
 
-export async function apiSetup(password: string): Promise<{ token: string }> {
-  const m = await detectMode();
-  if (m === "local") {
-    localStorage.setItem("bl0g:localPwSet", "1");
-    localStorage.setItem("bl0g:localPw", password);
-    const tok = "local-" + Date.now();
-    return { token: tok };
-  }
-  const r = await fetch("/api/setup", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password }),
+export async function apiSignUp(email: string, password: string): Promise<void> {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: `${window.location.origin}/app` },
   });
-  if (!r.ok) throw new Error((await r.json()).error || "setup failed");
-  return r.json();
+  if (error) throw new Error(error.message);
+  const uid = data.user?.id;
+  if (!uid) throw new Error("signup did not return a user");
+  // Claim ownership (RLS allows when owner_uid IS NULL).
+  const { error: claimErr } = await supabase
+    .from("app_config")
+    .update({ owner_uid: uid })
+    .eq("id", 1);
+  if (claimErr) throw new Error(claimErr.message);
 }
 
-export async function apiLogin(password: string): Promise<{ token: string }> {
-  const m = await detectMode();
-  if (m === "local") {
-    if (localStorage.getItem("bl0g:localPw") !== password) throw new Error("invalid password");
-    return { token: "local-" + Date.now() };
-  }
-  const r = await fetch("/api/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password }),
-  });
-  if (!r.ok) throw new Error((await r.json()).error || "login failed");
-  return r.json();
+export async function apiSignIn(email: string, password: string): Promise<void> {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw new Error(error.message);
 }
 
 export async function apiGetEntries(): Promise<Entry[]> {
-  const m = await detectMode();
-  if (m === "local") {
-    return JSON.parse(localStorage.getItem("bl0g:entries") || "[]");
-  }
-  const r = await fetch("/api/entries");
-  const data = await r.json();
-  return data.entries || [];
+  const { data, error } = await supabase
+    .from("entries")
+    .select("id, ts, parts, tag_ids")
+    .order("ts", { ascending: false })
+    .limit(1000);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(rowToEntry);
 }
 
-function authHeaders() {
-  const t = localStorage.getItem("bl0g:token");
-  return t ? { Authorization: `Bearer ${t}` } : {};
+export async function apiAddEntry(entry: Entry, _token?: string): Promise<Entry> {
+  const id = entry.id || Date.now();
+  const ts = entry.ts || Date.now();
+  const { data, error } = await supabase
+    .from("entries")
+    .insert({
+      id,
+      ts,
+      day_key: dayKey(ts),
+      parts: entry.parts as never,
+      tag_ids: (entry.tagIds ?? []) as never,
+    })
+    .select("id, ts, parts, tag_ids")
+    .single();
+  if (error) throw new Error(error.message);
+  return rowToEntry(data);
 }
 
-export async function apiAddEntry(entry: Entry, token: string): Promise<Entry> {
-  const m = await detectMode();
-  if (m === "local") {
-    const list: Entry[] = JSON.parse(localStorage.getItem("bl0g:entries") || "[]");
-    list.unshift(entry);
-    localStorage.setItem("bl0g:entries", JSON.stringify(list));
-    return entry;
-  }
-  const r = await fetch("/api/entries", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify(entry),
-  });
-  if (!r.ok) throw new Error("save failed");
-  return (await r.json()).entry;
+export async function apiUpdateEntry(entry: Entry, _token?: string): Promise<Entry> {
+  const { data, error } = await supabase
+    .from("entries")
+    .update({
+      ts: entry.ts,
+      day_key: dayKey(entry.ts),
+      parts: entry.parts as never,
+      tag_ids: (entry.tagIds ?? []) as never,
+    })
+    .eq("id", entry.id)
+    .select("id, ts, parts, tag_ids")
+    .single();
+  if (error) throw new Error(error.message);
+  return rowToEntry(data);
 }
 
-export async function apiDeleteEntry(id: number, token: string): Promise<void> {
-  const m = await detectMode();
-  if (m === "local") {
-    const list: Entry[] = JSON.parse(localStorage.getItem("bl0g:entries") || "[]");
-    localStorage.setItem("bl0g:entries", JSON.stringify(list.filter((e) => e.id !== id)));
-    return;
-  }
-  await fetch(`/api/entries/${id}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
-  });
+export async function apiDeleteEntry(id: number, _token?: string): Promise<void> {
+  const { error } = await supabase.from("entries").delete().eq("id", id);
+  if (error) throw new Error(error.message);
 }
 
-export async function apiUpdateEntry(entry: Entry, token: string): Promise<Entry> {
-  const m = await detectMode();
-  if (m === "local") {
-    const list: Entry[] = JSON.parse(localStorage.getItem("bl0g:entries") || "[]");
-    const next = list.map((e) => (e.id === entry.id ? entry : e));
-    localStorage.setItem("bl0g:entries", JSON.stringify(next));
-    return entry;
-  }
-  const r = await fetch(`/api/entries/${entry.id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify(entry),
-  });
-  if (!r.ok) throw new Error("update failed");
-  return (await r.json()).entry;
+export function seedLocalIfEmpty(_seed: Entry[]) {
+  return;
 }
 
-export function seedLocalIfEmpty(seed: Entry[]) {
-  const cur = localStorage.getItem("bl0g:entries");
-  if (!cur || cur === "[]") {
-    localStorage.setItem("bl0g:entries", JSON.stringify(seed));
-  }
-}
+export type { Entry, Part };

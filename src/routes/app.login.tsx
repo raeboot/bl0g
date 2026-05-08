@@ -2,8 +2,7 @@ import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { StickyCard } from "@/components/StickyCard";
-import { apiLogin, apiStatus } from "@/lib/api";
-import { setToken } from "@/lib/auth";
+import { apiSignIn, apiStatus } from "@/lib/api";
 
 export const Route = createFileRoute("/app/login")({
   beforeLoad: async () => {
@@ -16,6 +15,7 @@ export const Route = createFileRoute("/app/login")({
 
 function Login() {
   const navigate = useNavigate();
+  const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -25,8 +25,7 @@ function Login() {
     setErr("");
     setBusy(true);
     try {
-      const { token } = await apiLogin(pw);
-      setToken(token);
+      await apiSignIn(email, pw);
       navigate({ to: "/app" });
     } catch (e: any) {
       setErr(e.message || "login failed");
@@ -43,12 +42,21 @@ function Login() {
           <h1 className="pixel text-[14px] mb-4">LOG IN</h1>
           <form onSubmit={submit} className="space-y-3">
             <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="email"
+              className="w-full border-2 border-ink bg-background px-3 py-2 text-[13px]"
+              autoFocus
+              required
+            />
+            <input
               type="password"
               value={pw}
               onChange={(e) => setPw(e.target.value)}
               placeholder="password"
               className="w-full border-2 border-ink bg-background px-3 py-2 text-[13px]"
-              autoFocus
+              required
             />
             {err && <div className="pixel text-[10px]" style={{ color: "var(--bug)" }}>{err}</div>}
             <button type="submit" disabled={busy} className="ink-btn win w-full">

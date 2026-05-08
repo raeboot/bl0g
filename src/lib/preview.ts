@@ -1,3 +1,5 @@
+import { apiFetchPreviewFn } from "@/lib/preview.functions";
+
 export type LinkMeta = {
   title?: string;
   description?: string;
@@ -6,11 +8,7 @@ export type LinkMeta = {
 
 async function viaServer(url: string): Promise<LinkMeta | null> {
   try {
-    const r = await fetch(`/api/preview?url=${encodeURIComponent(url)}`);
-    if (!r.ok) return null;
-    const ct = r.headers.get("content-type") || "";
-    if (!ct.includes("application/json")) return null;
-    const j = await r.json();
+    const j = await apiFetchPreviewFn({ data: { url } });
     if (!j || (!j.title && !j.image && !j.description)) return null;
     return j as LinkMeta;
   } catch {

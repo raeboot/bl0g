@@ -1,21 +1,35 @@
 import { useRef, useState } from "react";
-import { TAG_PRESETS, parseYouTube, getHost, type NewPiece } from "@/lib/pieces";
+import { parseYouTube, getHost, type NewPiece } from "@/lib/pieces";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { AudioRecorder } from "@/components/AudioRecorder";
 import { fetchLinkMeta } from "@/lib/preview";
+import { useTags } from "@/hooks/useTags";
+import { ManageTagsModal } from "@/components/ManageTagsModal";
 
-export function AdderBar({ onAdd }: { onAdd: (p: NewPiece) => void }) {
+export function AdderBar({
+  onAdd,
+  selectedTagIds,
+  onToggleTag,
+}: {
+  onAdd: (p: NewPiece) => void;
+  selectedTagIds: string[];
+  onToggleTag: (id: string) => void;
+}) {
   const [html, setHtml] = useState("");
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
+  const [editorKey, setEditorKey] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [tags] = useTags();
+  const [manageOpen, setManageOpen] = useState(false);
 
   const submitText = () => {
     if (!text.trim()) return;
     onAdd({ type: "text", body: text.trim(), html });
     setHtml("");
     setText("");
+    setEditorKey((k) => k + 1);
   };
 
   const submitLink = async () => {
@@ -63,6 +77,7 @@ export function AdderBar({ onAdd }: { onAdd: (p: NewPiece) => void }) {
       <div className="pixel text-[10px] opacity-60">WHAT DO YOU WANT TO LOG?</div>
 
       <RichTextEditor
+        key={editorKey}
         html={html}
         onChange={(h, t) => {
           setHtml(h);
@@ -70,6 +85,7 @@ export function AdderBar({ onAdd }: { onAdd: (p: NewPiece) => void }) {
         }}
         placeholder="write it out — bold, highlight, sizes, links…"
         minHeight={100}
+        autoFocus
       />
       <div className="flex justify-end">
         <button className="ink-btn win" onClick={submitText} disabled={!text.trim()}>
@@ -115,20 +131,41 @@ export function AdderBar({ onAdd }: { onAdd: (p: NewPiece) => void }) {
       </div>
 
       <div className="border-t-2 border-ink pt-3">
-        <div className="pixel text-[9px] opacity-60 mb-2">TAGS</div>
+        <div className="flex items-center justify-between mb-2">
+          <div className="pixel text-[9px] opacity-60">TAGS</div>
+          <button
+            className="ink-btn !py-1 !px-2 !text-[9px]"
+            onClick={() => setManageOpen(true)}
+          >
+            MANAGE TAGS
+          </button>
+        </div>
         <div className="flex flex-wrap gap-2">
-          {TAG_PRESETS.map((t) => (
-            <button
-              key={t.label}
-              className="pixel text-[10px] border-2 border-ink px-2 py-1 hover:-translate-y-0.5 transition-transform"
-              style={{ background: `var(--${t.color})` }}
-              onClick={() => onAdd({ type: "tag", label: t.label, color: t.color })}
-            >
-              #{t.label}
-            </button>
-          ))}
+          {tags.length === 0 && (
+            <div className="pixel text-[9px] opacity-50">no tags yet — add some in MANAGE TAGS</div>
+          )}
+          {tags.map((t) => {
+            const selected = selectedTagIds.includes(t.id);
+            return (
+              <button
+                key={t.id}
+                onClick={() => onToggleTag(t.id)}
+                className="pixel text-[10px] border-2 border-ink px-2 py-1 hover:-translate-y-0.5 transition-transform"
+                style={{
+                  background: t.color,
+                  outline: selected ? "2px solid var(--ink)" : "none",
+                  outlineOffset: 2,
+                  opacity: selected ? 1 : 0.55,
+                }}
+              >
+                #{t.name}
+              </button>
+            );
+          })}
         </div>
       </div>
+
+      <ManageTagsModal open={manageOpen} onClose={() => setManageOpen(false)} />
     </div>
   );
 }

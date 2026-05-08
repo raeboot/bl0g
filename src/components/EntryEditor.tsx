@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import type { Entry, MoodId, Part, TagColor } from "@/lib/pieces";
-import { TAG_PRESETS, parseYouTube, getHost } from "@/lib/pieces";
+import type { Entry, Part } from "@/lib/pieces";
+import { parseYouTube, getHost } from "@/lib/pieces";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { AudioRecorder } from "@/components/AudioRecorder";
 import { fetchLinkMeta } from "@/lib/preview";
-import { MoodPicker } from "@/components/MoodFace";
-
-const TAG_COLORS: TagColor[] = ["exp", "thought", "bug", "win", "idea"];
+import { useTags } from "@/hooks/useTags";
 
 export function EntryEditor({
   entry,
@@ -19,14 +17,18 @@ export function EntryEditor({
   onCancel: () => void;
   onDelete?: () => Promise<void> | void;
 }) {
-  const [parts, setParts] = useState<Part[]>(entry.parts);
-  const [mood, setMood] = useState<MoodId | undefined>(entry.mood);
+  const [parts, setParts] = useState<Part[]>(entry.parts.filter((p) => p.type !== "tag"));
+  const [tagIds, setTagIds] = useState<string[]>(entry.tagIds ?? []);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const [linkInput, setLinkInput] = useState("");
+  const [tags] = useTags();
 
-  useEffect(() => setParts(entry.parts), [entry]);
+  useEffect(() => {
+    setParts(entry.parts.filter((p) => p.type !== "tag"));
+    setTagIds(entry.tagIds ?? []);
+  }, [entry]);
 
   const updatePart = (i: number, next: Part) =>
     setParts((arr) => arr.map((p, idx) => (idx === i ? next : p)));
@@ -41,8 +43,6 @@ export function EntryEditor({
     });
 
   const addText = () => setParts((a) => [...a, { type: "text", body: "" }]);
-  const addTag = (label: string, color: TagColor) =>
-    setParts((a) => [...a, { type: "tag", label, color }]);
   const addLink = async () => {
     if (!linkInput.trim()) return;
     const u = linkInput;
@@ -70,15 +70,17 @@ export function EntryEditor({
   const addAudio = (src: string, name: string, duration: number) =>
     setParts((a) => [...a, { type: "audio", src, name, duration }]);
 
+  const toggleTag = (id: string) =>
+    setTagIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+
   const submit = async () => {
     setErr("");
     setBusy(true);
     try {
-      // strip empty text parts
       const clean = parts.filter((p) => !(p.type === "text" && !p.body.trim()));
-      await onSave({ ...entry, parts: clean, mood });
-    } catch (e: any) {
-      setErr(e.message || "save failed");
+      await onSave({ ...entry, parts: clean, tagIds });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "save failed");
     } finally {
       setBusy(false);
     }
@@ -132,23 +134,33 @@ export function EntryEditor({
           />
           <button className="ink-btn" onClick={addLink}>+ LINK</button>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {TAG_PRESETS.map((t) => (
-            <button
-              key={t.label}
-              className="pixel text-[9px] border-2 border-ink px-2 py-1"
-              style={{ background: `var(--${t.color})` }}
-              onClick={() => addTag(t.label, t.color)}
-            >
-              +#{t.label}
-            </button>
-          ))}
-        </div>
-      </div>
 
-      <div className="border-t-2 border-ink pt-3 space-y-2">
-        <div className="pixel text-[9px] opacity-60">MOOD</div>
-        <MoodPicker value={mood} onChange={setMood} />
+        <div className="pt-2">
+          <div className="pixel text-[9px] opacity-60 mb-2">TAGS</div>
+          <div className="flex flex-wrap gap-2">
+            {tags.length === 0 && (
+              <div className="pixel text-[9px] opacity-50">no tags yet</div>
+            )}
+            {tags.map((t) => {
+              const selected = tagIds.includes(t.id);
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => toggleTag(t.id)}
+                  className="pixel text-[9px] border-2 border-ink px-2 py-1"
+                  style={{
+                    background: t.color,
+                    outline: selected ? "2px solid var(--ink)" : "none",
+                    outlineOffset: 2,
+                    opacity: selected ? 1 : 0.55,
+                  }}
+                >
+                  #{t.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {err && <div className="pixel text-[10px]" style={{ color: "var(--bug)" }}>{err}</div>}
@@ -213,7 +225,6 @@ function PartRow({
 }
 
 function rowBg(p: Part): string {
-  if (p.type === "tag") return `var(--${p.color})`;
   if (p.type === "link") return "var(--exp)";
   return "var(--bg)";
 }
@@ -227,28 +238,6 @@ function PartFields({ part, onChange }: { part: Part; onChange: (p: Part) => voi
         placeholder="text…"
         minHeight={80}
       />
-    );
-  }
-  if (part.type === "tag") {
-    return (
-      <div className="flex flex-wrap gap-2 items-center">
-        <input
-          value={part.label}
-          onChange={(e) => onChange({ ...part, label: e.target.value.toUpperCase() })}
-          className="flex-1 min-w-[120px] border-2 border-ink bg-background px-2 py-1 text-[12px] pixel"
-        />
-        <div className="flex gap-1">
-          {TAG_COLORS.map((c) => (
-            <button
-              key={c}
-              onClick={() => onChange({ ...part, color: c })}
-              className="border-2 border-ink w-6 h-6"
-              style={{ background: `var(--${c})`, outline: part.color === c ? "2px solid var(--ink)" : "none", outlineOffset: 2 }}
-              title={c}
-            />
-          ))}
-        </div>
-      </div>
     );
   }
   if (part.type === "image") {

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/SiteHeader";
 import { StickyCard } from "@/components/StickyCard";
 
@@ -26,6 +26,9 @@ function About() {
             Drop pieces on a canvas, log it, move on. Self-host it anywhere with{" "}
             <code className="pixel text-[11px] border border-ink px-1">npm start</code>. Your data lives in one JSON
             file you can back up by copying.
+          </p>
+          <p className="text-[13px] mt-4">
+            <Link to="/install" className="underline">self-host →</Link>
           </p>
         </StickyCard>
       </main>

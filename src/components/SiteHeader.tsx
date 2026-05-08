@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useDarkMode } from "@/hooks/useDarkMode";
 
-export function SiteHeader({ active }: { active?: "feed" | "about" | "log" }) {
+export function SiteHeader({ active }: { active?: "feed" | "about" | "log" | "calendar" }) {
   const { dark, toggle } = useDarkMode();
   return (
     <header className="border-b-2 border-ink bg-background">
@@ -11,6 +11,7 @@ export function SiteHeader({ active }: { active?: "feed" | "about" | "log" }) {
         </Link>
         <nav className="flex items-center gap-2">
           <Link to="/" className={`ink-btn ${active === "feed" ? "active" : ""}`}>feed</Link>
+          <Link to="/calendar" className={`ink-btn ${active === "calendar" ? "active" : ""}`}>calendar</Link>
           <Link to="/about" className={`ink-btn ${active === "about" ? "active" : ""}`}>about</Link>
           <Link to="/app" className={`ink-btn ${active === "log" ? "active" : ""}`}>log →</Link>
           <button

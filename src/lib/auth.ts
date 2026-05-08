@@ -1,11 +1,30 @@
-const KEY = "bl0g:token";
-export function getToken() {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(KEY);
+import { supabase } from "@/integrations/supabase/client";
+import type { Session } from "@supabase/supabase-js";
+
+let cached: Session | null = null;
+
+if (typeof window !== "undefined") {
+  supabase.auth.getSession().then(({ data }) => {
+    cached = data.session;
+  });
+  supabase.auth.onAuthStateChange((_event, session) => {
+    cached = session;
+  });
 }
-export function setToken(t: string) {
-  localStorage.setItem(KEY, t);
+
+export function getSession(): Session | null {
+  return cached;
 }
-export function clearToken() {
-  localStorage.removeItem(KEY);
+
+// Legacy compatibility: callers used getToken() as a truthy "logged in" check.
+export function getToken(): string | null {
+  return cached?.access_token ?? null;
 }
+
+export async function clearToken(): Promise<void> {
+  cached = null;
+  await supabase.auth.signOut();
+}
+
+// no-op kept for source compatibility; real session is managed by Supabase.
+export function setToken(_t: string): void {}

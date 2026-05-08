@@ -9,7 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as GuestbookRouteImport } from './routes/guestbook'
+import { Route as InstallRouteImport } from './routes/install'
+import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
@@ -18,9 +19,14 @@ import { Route as DayDateRouteImport } from './routes/day.$date'
 import { Route as AppSetupRouteImport } from './routes/app.setup'
 import { Route as AppLoginRouteImport } from './routes/app.login'
 
-const GuestbookRoute = GuestbookRouteImport.update({
-  id: '/guestbook',
-  path: '/guestbook',
+const InstallRoute = InstallRouteImport.update({
+  id: '/install',
+  path: '/install',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -63,7 +69,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/app': typeof AppRouteWithChildren
-  '/guestbook': typeof GuestbookRoute
+  '/calendar': typeof CalendarRoute
+  '/install': typeof InstallRoute
   '/app/login': typeof AppLoginRoute
   '/app/setup': typeof AppSetupRoute
   '/day/$date': typeof DayDateRoute
@@ -72,7 +79,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/guestbook': typeof GuestbookRoute
+  '/calendar': typeof CalendarRoute
+  '/install': typeof InstallRoute
   '/app/login': typeof AppLoginRoute
   '/app/setup': typeof AppSetupRoute
   '/day/$date': typeof DayDateRoute
@@ -83,7 +91,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/app': typeof AppRouteWithChildren
-  '/guestbook': typeof GuestbookRoute
+  '/calendar': typeof CalendarRoute
+  '/install': typeof InstallRoute
   '/app/login': typeof AppLoginRoute
   '/app/setup': typeof AppSetupRoute
   '/day/$date': typeof DayDateRoute
@@ -95,7 +104,8 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/app'
-    | '/guestbook'
+    | '/calendar'
+    | '/install'
     | '/app/login'
     | '/app/setup'
     | '/day/$date'
@@ -104,7 +114,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
-    | '/guestbook'
+    | '/calendar'
+    | '/install'
     | '/app/login'
     | '/app/setup'
     | '/day/$date'
@@ -114,7 +125,8 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/app'
-    | '/guestbook'
+    | '/calendar'
+    | '/install'
     | '/app/login'
     | '/app/setup'
     | '/day/$date'
@@ -125,17 +137,25 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AppRoute: typeof AppRouteWithChildren
-  GuestbookRoute: typeof GuestbookRoute
+  CalendarRoute: typeof CalendarRoute
+  InstallRoute: typeof InstallRoute
   DayDateRoute: typeof DayDateRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/guestbook': {
-      id: '/guestbook'
-      path: '/guestbook'
-      fullPath: '/guestbook'
-      preLoaderRoute: typeof GuestbookRouteImport
+    '/install': {
+      id: '/install'
+      path: '/install'
+      fullPath: '/install'
+      preLoaderRoute: typeof InstallRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app': {
@@ -208,7 +228,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AppRoute: AppRouteWithChildren,
-  GuestbookRoute: GuestbookRoute,
+  CalendarRoute: CalendarRoute,
+  InstallRoute: InstallRoute,
   DayDateRoute: DayDateRoute,
 }
 export const routeTree = rootRouteImport

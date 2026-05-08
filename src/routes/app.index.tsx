@@ -1,13 +1,18 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Canvas } from "@/components/canvas/Canvas";
 import { TimelinePanel } from "@/components/canvas/TimelinePanel";
-import { apiAddEntry, apiGetEntries, apiStatus, seedLocalIfEmpty, getMode, apiUpdateEntry, apiDeleteEntry } from "@/lib/api";
-import { getToken, clearToken } from "@/lib/auth";
-import { seedEntries, type CanvasPiece, type Entry, type MoodId, type Part } from "@/lib/pieces";
-import { Postcards } from "@/components/Postcards";
-import { SayHiSettings } from "@/components/SayHiSettings";
+import {
+  apiAddEntry,
+  apiGetEntries,
+  apiStatus,
+  apiUpdateEntry,
+  apiDeleteEntry,
+} from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
+import type { CanvasPiece, Entry, Part } from "@/lib/pieces";
 
 export const Route = createFileRoute("/app/")({
   component: AppPage,
@@ -17,17 +22,17 @@ function AppPage() {
   const navigate = useNavigate();
   const [authReady, setAuthReady] = useState(false);
   const [pieces, setPieces] = useState<CanvasPiece[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
-  const [mood, setMood] = useState<MoodId | undefined>(undefined);
+  const [committing, setCommitting] = useState(false);
 
   useEffect(() => {
     (async () => {
       const s = await apiStatus();
       if (!s.initialized) return navigate({ to: "/app/setup" });
-      if (!getToken()) return navigate({ to: "/app/login" });
-      const m = await getMode();
-      if (m === "local") seedLocalIfEmpty(seedEntries());
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) return navigate({ to: "/app/login" });
       const list = await apiGetEntries();
       list.sort((a, b) => b.ts - a.ts);
       setEntries(list);
@@ -52,37 +57,55 @@ function AppPage() {
     return () => window.removeEventListener("bl0g:remove-piece", handler);
   }, []);
 
+  const toggleTag = (id: string) =>
+    setSelectedTagIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+
   const onCommit = async () => {
-    if (pieces.length === 0) return;
-    const parts: Part[] = pieces.map(({ pid, x, y, w, ...rest }) => rest as Part);
-    const entry: Entry = { id: Date.now(), ts: Date.now(), parts, mood };
-    const tok = getToken() || "";
-    try {
-      await apiAddEntry(entry, tok);
-    } catch (e) {
-      console.error(e);
+    if (committing) return;
+    if (pieces.length === 0 && selectedTagIds.length === 0) return;
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
+      toast.error("session expired — please log in again");
+      navigate({ to: "/app/login" });
       return;
     }
-    // staggered fade-up animation: clear after delay
-    setPieces([]);
-    setMood(undefined);
-    setEntries((cur) => [entry, ...cur]);
+    const parts: Part[] = pieces.map(({ pid, x, y, w, ...rest }) => rest as Part);
+    const entry: Entry = { id: Date.now(), ts: Date.now(), parts, tagIds: selectedTagIds };
+    setCommitting(true);
+    try {
+      const saved = await apiAddEntry(entry);
+      setPieces([]);
+      setSelectedTagIds([]);
+      setEntries((cur) => [saved, ...cur]);
+      toast.success("logged");
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "failed to log entry");
+    } finally {
+      setCommitting(false);
+    }
   };
 
-  const onLogout = () => {
-    clearToken();
+  const onLogout = async () => {
+    await supabase.auth.signOut();
     navigate({ to: "/app/login" });
   };
 
   const onUpdateEntry = async (e: Entry) => {
-    const tok = getToken() || "";
-    const updated = await apiUpdateEntry(e, tok);
-    setEntries((cur) => cur.map((x) => (x.id === updated.id ? updated : x)));
+    try {
+      const updated = await apiUpdateEntry(e);
+      setEntries((cur) => cur.map((x) => (x.id === updated.id ? updated : x)));
+    } catch (err: any) {
+      toast.error(err?.message || "update failed");
+    }
   };
   const onDeleteEntry = async (id: number) => {
-    const tok = getToken() || "";
-    await apiDeleteEntry(id, tok);
-    setEntries((cur) => cur.filter((x) => x.id !== id));
+    try {
+      await apiDeleteEntry(id);
+      setEntries((cur) => cur.filter((x) => x.id !== id));
+    } catch (err: any) {
+      toast.error(err?.message || "delete failed");
+    }
   };
 
   if (!authReady) {
@@ -109,17 +132,16 @@ function AppPage() {
             pieces={pieces}
             setPieces={setPieces}
             onCommit={onCommit}
-            onClear={() => setPieces([])}
+            committing={committing}
+            onClear={() => {
+              setPieces([]);
+              setSelectedTagIds([]);
+            }}
             removingIds={removingIds}
-            mood={mood}
-            setMood={setMood}
+            selectedTagIds={selectedTagIds}
+            onToggleTag={toggleTag}
           />
           <TimelinePanel entries={entries} onExport={() => {}} onUpdate={onUpdateEntry} onDelete={onDeleteEntry} />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-10">
-          <Postcards />
-          <SayHiSettings />
         </div>
       </main>
     </div>
